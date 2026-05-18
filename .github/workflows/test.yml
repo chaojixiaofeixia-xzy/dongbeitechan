@@ -19,33 +19,35 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: 安装依赖
+    - name: 安装项目依赖
       run: |
         python -m pip install --upgrade pip
         pip install flask flask-cors selenium pytest allure-pytest
+
+    - name: 安装 Allure 命令行工具
+      run: |
+        sudo apt-add-repository -y ppa:qameta/allure
+        sudo apt-get update
+        sudo apt-get install -y allure
 
     - name: 启动 Flask 后端
       run: |
         python app.py &
         sleep 3
 
-    - name: 运行测试（跳过UI测试，仅验证框架可运行）
+    - name: 运行测试（跳过失败，因为无浏览器）
       run: |
         pytest tests/test_shop.py -v --alluredir=allure-results --ignore=venv || true
       continue-on-error: true
 
-    - name: 生成 Allure 报告
-      uses: simple-elf/allure-report-action@v1.7
-      if: always()
-      with:
-        allure_results: allure-results
-        allure_history: allure-history
-        keep_reports: 20
+    - name: 生成 Allure 报告（静态文件）
+      run: |
+        allure generate allure-results -o allure-report --clean
 
     - name: 部署到 GitHub Pages
-      uses: peaceiris/actions-gh-pages@v4
-      if: always()
+      uses: peaceiris/actions-gh-pages@v3
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./allure-report
         publish_branch: gh-pages
-        publish_dir: allure-history
+        force_orphan: true
